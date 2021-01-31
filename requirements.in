@@ -1,0 +1,5 @@
+black
+pip-tools
+Django<4
+djangorestframework<4
+psycopg2-binary>=2.8
