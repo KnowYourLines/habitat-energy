@@ -1,3 +1,4 @@
+import datetime
 import math
 
 import requests
@@ -5,7 +6,7 @@ import requests
 from habitat.models import Record
 
 
-def get_habitat_day_results():
+def get_habitat_records():
     records_limit_per_call = 10
     url = f"https://data.nationalgrideso.com/api/3/action/datastore_search?resource_id=e3e44433-7614-4c8c-9cbc-7808994d3a72&limit={records_limit_per_call}"
     response = requests.get(url)
@@ -29,7 +30,9 @@ def get_habitat_day_results():
             record_data = Record(
                 unique_bid_number=record["Unique bid number"],
                 accepted_or_rejected=record["Accepted/Rejected"],
-                delivery_date=record["Delivery Date"],
+                delivery_date=datetime.datetime.strptime(
+                    record["Delivery Date"], "%Y-%m-%d"
+                ),
             )
             record_data.save()
 
