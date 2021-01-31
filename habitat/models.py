@@ -1,9 +1,10 @@
 from django.db import models
 
 
-class Result(models.Model):
+class Record(models.Model):
     unique_bid_number = models.CharField(max_length=255)
     accepted_or_rejected = models.CharField(max_length=255)
+    delivery_date = models.DateField()
 
 
 #             "Market Name":"DC LF",
