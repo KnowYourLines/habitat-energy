@@ -1,9 +1,13 @@
 import datetime
+import logging
 import math
 
 import requests
+from django.db import IntegrityError
 
 from habitat.models import Record
+
+logger = logging.getLogger(__name__)
 
 
 def get_habitat_records():
@@ -25,6 +29,11 @@ def get_habitat_records():
         records += data["records"]
         num_results_searched += records_limit_per_call
 
+    save_records(records)
+    return Record.objects.all()
+
+
+def save_records(records):
     for record in records:
         if record["Agent/Applicant"] == "Habitat Energy Limited":
             record_data = Record(
@@ -34,6 +43,9 @@ def get_habitat_records():
                     record["Delivery Date"], "%Y-%m-%d"
                 ),
             )
-            record_data.save()
-
-    return Record.objects.all()
+            try:
+                record_data.save()
+            except IntegrityError:
+                logger.error(
+                    "Couldn't save record. A record with the same bid number likely already exists"
+                )

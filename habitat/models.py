@@ -2,7 +2,7 @@ from django.db import models
 
 
 class Record(models.Model):
-    unique_bid_number = models.CharField(max_length=255)
+    unique_bid_number = models.CharField(max_length=255, unique=True)
     accepted_or_rejected = models.CharField(max_length=255)
     delivery_date = models.DateField()
 
