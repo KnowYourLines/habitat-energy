@@ -9,28 +9,46 @@ from habitat.models import Record
 
 logger = logging.getLogger(__name__)
 
+API_ENDPOINT = "https://data.nationalgrideso.com/api/3/action/datastore_search?resource_id=e3e44433-7614-4c8c-9cbc-7808994d3a72"
+
 
 def get_habitat_records():
-    records_limit_per_call = 10
-    url = f"https://data.nationalgrideso.com/api/3/action/datastore_search?resource_id=e3e44433-7614-4c8c-9cbc-7808994d3a72&limit={records_limit_per_call}"
+    records = gather_records()
+    save_records(records)
+    return Record.objects.all()
+
+
+def hit_endpoint(url):
     response = requests.get(url)
     response.raise_for_status()
     data = response.json()["result"]
-    total_results = data["total"]
+    return data
+
+
+def initial_api_call(records_per_call):
+    url = f"{API_ENDPOINT}&limit={records_per_call}"
+    data = hit_endpoint(url)
+    total_results_count = data["total"]
     records = data["records"]
+    return records, total_results_count
 
-    num_calls_left = math.ceil(total_results / records_limit_per_call) - 1
-    num_results_searched = records_limit_per_call
+
+def remaining_api_calls(total_results_count, records_per_call, records):
+    num_calls_left = math.ceil(total_results_count / records_per_call) - 1
+    num_results_searched = records_per_call
     for i in range(num_calls_left):
-        url = f"https://data.nationalgrideso.com/api/3/action/datastore_search?resource_id=e3e44433-7614-4c8c-9cbc-7808994d3a72&limit={records_limit_per_call}&offset={num_results_searched}"
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()["result"]
+        url = f"{API_ENDPOINT}&limit={records_per_call}&offset={num_results_searched}"
+        data = hit_endpoint(url)
         records += data["records"]
-        num_results_searched += records_limit_per_call
+        num_results_searched += records_per_call
+    return records
 
-    save_records(records)
-    return Record.objects.all()
+
+def gather_records():
+    records_per_call = 10
+    records, total_results_count = initial_api_call(records_per_call)
+    records = remaining_api_calls(total_results_count, records_per_call, records)
+    return records
 
 
 def save_records(records):
