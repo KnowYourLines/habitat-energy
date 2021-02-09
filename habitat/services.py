@@ -3,7 +3,6 @@ import logging
 import math
 
 import requests
-from django.db import IntegrityError
 
 from habitat.models import Record
 
@@ -52,18 +51,16 @@ def gather_records():
 
 
 def save_records(records):
+    record_data = []
     for record in records:
         if record["Agent/Applicant"] == "Habitat Energy Limited":
-            record_data = Record(
-                unique_bid_number=record["Unique bid number"],
-                accepted_or_rejected=record["Accepted/Rejected"],
-                delivery_date=datetime.datetime.strptime(
-                    record["Delivery Date"], "%Y-%m-%d"
-                ),
-            )
-            try:
-                record_data.save()
-            except IntegrityError:
-                logger.error(
-                    "Couldn't save record. A record with the same bid number likely already exists"
+            record_data.append(
+                Record(
+                    unique_bid_number=record["Unique bid number"],
+                    accepted_or_rejected=record["Accepted/Rejected"],
+                    delivery_date=datetime.datetime.strptime(
+                        record["Delivery Date"], "%Y-%m-%d"
+                    ),
                 )
+            )
+    Record.objects.bulk_create(record_data, ignore_conflicts=True)
