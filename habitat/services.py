@@ -3,6 +3,7 @@ import logging
 import math
 
 import requests
+from requests import HTTPError, Timeout
 
 from habitat.models import Record
 
@@ -17,11 +18,19 @@ def get_habitat_records():
     return Record.objects.all()
 
 
-def hit_endpoint(url):
-    response = requests.get(url)
-    response.raise_for_status()
-    data = response.json()["result"]
-    return data
+def hit_endpoint(url, attempts=3):
+    for attempt in range(1, attempts + 1):
+        try:
+            logger.debug(f"Attempt {attempt} to hit {url}")
+            response = requests.get(url)
+            logger.debug(f"Successfully hit {url} on attempt {attempt}")
+            response.raise_for_status()
+            data = response.json()["result"]
+            logger.debug(f"Got payload from {url} on attempt {attempt}")
+            return data
+        except (HTTPError, requests.ConnectionError, Timeout) as exc:
+            logger.error(f"Failed to hit {url} on attempt {attempt}. {str(exc)}")
+            continue
 
 
 def initial_api_call(records_per_call):
