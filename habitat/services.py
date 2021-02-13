@@ -29,7 +29,8 @@ def hit_endpoint(url, attempts=3):
             logger.debug(f"Got payload from {url} on attempt {attempt}")
             return data
         except (HTTPError, requests.ConnectionError, Timeout) as exc:
-            logger.error(f"Failed to hit {url} on attempt {attempt}. {str(exc)}")
+            logger.debug(f"{str(exc)}")
+            logger.debug(f"Failed to hit {url} on attempt {attempt}")
             continue
 
 
