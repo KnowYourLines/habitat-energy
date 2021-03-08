@@ -1,9 +1,14 @@
 import datetime
 import logging
 import math
+from concurrent.futures import as_completed
+from http import HTTPStatus
 
 import requests
 from requests import HTTPError, Timeout
+from requests.adapters import HTTPAdapter, Retry
+from requests.exceptions import RetryError
+from requests_futures.sessions import FuturesSession
 
 from habitat.models import Record
 
@@ -45,11 +50,28 @@ def initial_api_call(records_per_call):
 def remaining_api_calls(total_results_count, records_per_call, records):
     num_calls_left = math.ceil(total_results_count / records_per_call) - 1
     num_results_searched = records_per_call
-    for i in range(num_calls_left):
-        url = f"{API_ENDPOINT}&limit={records_per_call}&offset={num_results_searched}"
-        data = hit_endpoint(url)
-        records += data["records"]
-        num_results_searched += records_per_call
+    retries = 3
+    status_forcelist = [status for status in list(HTTPStatus) if status >= 300]
+    retry = Retry(
+        total=retries,
+        status_forcelist=status_forcelist,
+    )
+    adapter = HTTPAdapter(max_retries=retry)
+
+    with FuturesSession() as session:
+        session.mount("https://", adapter)
+        futures = [
+            session.get(
+                f"{API_ENDPOINT}&limit={records_per_call}&offset={num_results_searched * i}"
+            )
+            for i in range(1, num_calls_left + 1)
+        ]
+        for future in as_completed(futures):
+            try:
+                response = future.result()
+                records += response.json()["result"]["records"]
+            except (RetryError, KeyError) as exc:
+                logger.debug(f"{str(exc)}")
     return records
 
 
